@@ -1,5 +1,6 @@
 from ebooksdirectory import Utility as UEBD, MatchingEBD
 from hathitrust import Utility as UHT, Select
+from freetechbooks import BrowseBooks, Utility as UFCB
 
 from flask_restx import Api, Resource
 from flask import Flask, Response, request
@@ -12,11 +13,13 @@ ns1 = api.namespace('ebooksdirectory',
                     description='API Crawling web e-booksdirectory')
 ns2 = api.namespace('hathitrust',
                     description='API Crawling web hathitrust')
+ns3 = api.namespace(
+    'freetechbooks', description='API Crawling web freetechbooks')
 
 # EBOOKSDIRECTORY
 
 
-@ns1.route('/search')
+@ns1.route('/get-books')
 @ns1.doc(
     params={
         "filters": {
@@ -29,7 +32,7 @@ ns2 = api.namespace('hathitrust',
             "enum": [value for value in UEBD.cat]
         },
         "countpage": {
-            "description": "Number of pages you want to crawl",
+            "description": "How many pages will you take?",
             "type": int
         }
     }
@@ -52,7 +55,7 @@ value = UHT.types.values()
 default = list(value)[0]
 
 
-@ns2.route('/search')
+@ns2.route('/get-books')
 @ns2.doc(
     params={
         "keyword": {
@@ -65,7 +68,7 @@ default = list(value)[0]
             "default": default
         },
         "page": {
-            "description": "what pages will you crawl",
+            "description": "what page do you want to take?",
             "type": int,
             "default": 1
         },
@@ -78,7 +81,6 @@ default = list(value)[0]
 )
 class GetValueHT(Resource):
     def get(self):
-
         try:
             keyword = request.args.get('keyword')
             value = request.args.get('types')
@@ -90,6 +92,193 @@ class GetValueHT(Resource):
             return match.displaysResults()
         except Exception as ex:
             resp, code = UHT.returnError(ex)
+            return Response(response=resp, status=code)
+
+
+@ns3.route('/get-all-books')
+@ns3.doc(
+    params={
+        "page": {
+            "description": "what page do you want to take?",
+            "type": int,
+            "default": 1
+        }
+    }
+)
+class GetValueFTB1(Resource):
+    def get(self):
+        try:
+            page = request.args.get('page')
+            BB = BrowseBooks('all', page=page)
+            return BB.displayResult()
+        except Exception as ex:
+            resp, code = UFCB.returnError(ex)
+            return Response(response=resp, status=code)
+
+
+@ns3.route('/get-all-subcategories')
+class GetAllSubCat(Resource):
+    def get(self):
+        try:
+            BB = BrowseBooks('category')
+            return BB.displayResult()
+        except Exception as ex:
+            resp, code = UFCB.returnError(ex)
+            return Response(response=resp, status=code)
+
+
+@ns3.route('/get-all-subcategories-books')
+@ns3.doc(
+    params={
+        "id": {
+            "description": "id is the id of all-sub-categories",
+            "required": True
+        },
+        "page": {
+            'description': 'what page do you want to take?',
+            'type': int,
+            'default': 1
+        }
+    }
+)
+class GetValueSubCat(Resource):
+    def get(self):
+        try:
+            subcat_id = request.args.get('id')
+            page = request.args.get('page')
+            BB = BrowseBooks(by='asc', page=page, id=subcat_id)
+            return BB.displayResult()
+        except Exception as ex:
+            resp, code = UFCB.returnError(ex)
+            return Response(response=resp, status=code)
+
+
+@ns3.route('/get-all-authors')
+@ns3.doc(
+    params={
+        'page': {
+            'description': 'what page do you want to take?',
+            'type': int,
+            'default': 1
+        }
+    }
+)
+class GetAllAuthors(Resource):
+    def get(self):
+        try:
+            page = request.args.get('page')
+            BB = BrowseBooks('author', page)
+            return BB.displayResult()
+        except Exception as ex:
+            resp, code = UFCB.returnError(ex)
+            return Response(response=resp, status=code)
+
+
+@ns3.route('/get-all-authors-books')
+@ns3.doc(
+    params={
+        "id": {
+            "description": "id is the id of all-sub-categories",
+            "required": True
+        }
+    }
+)
+class GetValueAuthors(Resource):
+    def get(self):
+        try:
+            subcat_id = request.args.get('id')
+            BB = BrowseBooks(id=subcat_id)
+            return BB.displayResult()
+        except Exception as ex:
+            resp, code = UFCB.returnError(ex)
+            return Response(response=resp, status=code)
+
+
+@ns3.route('/get-all-publishers')
+@ns3.doc(
+    params={
+        'page': {
+            'description': 'what page do you want to take?',
+            'type': int,
+            'default': 1
+        }
+    }
+)
+class GetAllPubs(Resource):
+    def get(self):
+        try:
+            page = request.args.get('page')
+            BB = BrowseBooks('publisher', page)
+            return BB.displayResult()
+        except Exception as ex:
+            resp, code = UFCB.returnError(ex)
+            return Response(response=resp, status=code)
+
+
+@ns3.route('/get-all-publishers-books')
+@ns3.doc(
+    params={
+        "id": {
+            "description": "id is the id of all-sub-categories",
+            "required": True
+        }
+    }
+)
+class GetValuePubs(Resource):
+    def get(self):
+        try:
+            subcat_id = request.args.get('id')
+            BB = BrowseBooks(id=subcat_id)
+            return BB.displayResult()
+        except Exception as ex:
+            resp, code = UFCB.returnError(ex)
+            return Response(response=resp, status=code)
+
+
+@ns3.route('/get-all-licenses')
+@ns3.doc(
+    params={
+        'page': {
+            'description': 'what page do you want to take?',
+            'type': int,
+            'default': 1
+        }
+    }
+)
+class GetAllLic(Resource):
+    def get(self):
+        try:
+            page = request.args.get('page')
+            BB = BrowseBooks('license', page)
+            return BB.displayResult()
+        except Exception as ex:
+            resp, code = UFCB.returnError(ex)
+            return Response(response=resp, status=code)
+
+
+@ns3.route('/get-all-licenses-books')
+@ns3.doc(
+    params={
+        "id": {
+            "description": "id is the id of all-sub-categories",
+            "required": True
+        },
+        'page': {
+            'description': 'what page do you want to take?',
+            'type': int,
+            'default': 1
+        }
+    }
+)
+class GetValueLic(Resource):
+    def get(self):
+        try:
+            subcat_id = request.args.get('id')
+            page = request.args.get('page')
+            BB = BrowseBooks(by='lic', page=page, id=subcat_id)
+            return BB.displayResult()
+        except Exception as ex:
+            resp, code = UFCB.returnError(ex)
             return Response(response=resp, status=code)
 
 

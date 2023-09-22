@@ -22,30 +22,52 @@ class Utility:
 
     def returnError(message):
         '''Bila swagger mengambalikan server response 500 atau 400 maka akan memunculkan response body sesuai dengan ini.'''
-        if message == TypeError or ValueError:
-            datas = {
-                'status': 500,
-                'data': [],
-                'next_page': ''
-            }
-        else:
-            datas = {
-                'status': 400,
-                'data': [],
-                'next_page': ''
-            }
+        datas = {
+            'status': 500,
+            'data': [],
+            'next_page': ''
+        }
         datas_dumps = dumps(datas, indent=4)
         return datas_dumps, datas['status']
+
+    def resp400(datas: dict):
+        if datas['data'] != []:
+            return datas, datas['status']
+        else:
+            datas.update({'status': 400})
+            return datas, datas['status']
+
+    def remSimp(values: list):
+        complete_values = {}
+
+        for value in values:
+            parts = value.split('/')
+            first_part = parts[0].strip()
+            if first_part not in complete_values or len(value) > len(complete_values[first_part]):
+                complete_values[first_part] = value
+
+        comval = list(complete_values.values())
+        result = []
+        for item in comval:
+            is_more_specific = False
+
+            for other_item in comval:
+                if item != other_item and item in other_item:
+                    is_more_specific = True
+                    break
+
+            if not is_more_specific:
+                result.append(item)
+
+        return result
 
     def clean(text):
         '''Mengganti string uniq dengan dengan string sesuai format ascii, serta menghilangkan "\n" serta mengganati kutip dua menjadi kutip satu. Serta menghilangkan karakter tidak penting diakhir kalimat atau kata'''
         cleaned = re.sub(r'\n+', '\n', text)
         cleaned_text = re.sub(r'\s+', ' ', cleaned)
         normalized = unicodedata.normalize('NFKD', cleaned_text)
-        uniq_text = ''.join(
-            [c for c in normalized if not unicodedata.combining(c)])
-        # ascii_text = normalized.encode('ascii', 'ignore').decode('ascii')
-        replace_text = uniq_text.replace('\"', "'").replace('\r\n', ' - ')
+        ascii_text = normalized.encode('ascii', 'ignore').decode('ascii')
+        replace_text = ascii_text.replace('\"', "'").replace('\r\n', ' - ')
         return replace_text.strip().rstrip(",./;'\=-:")
 
     def unique(inList):
@@ -109,22 +131,31 @@ class Select:
     def rdValueNotA(self, item) -> list:
         return [Utility.clean(dd.text) for dd in item.find_all('dd', 'g-col-lg-8 g-col-12')]
 
-    def rdValueA(self, value, items) -> list | str:
-        values = []
-        for item in items.find_all('dl', 'metadata'):
-            for dt, dd in zip(item.find_all('dt', 'g-col-lg-4 g-col-12'), item.find_all('dd', 'g-col-lg-8 g-col-12')):
-                if Utility.clean(dt.text) == value:
-                    values.extend([Utility.clean(a.text).replace('/', '>')
-                                   for a in dd.find_all('a')])
-        return values[0] if len(values) == 1 else values if len(values) > 1 else ''
+    def mainAuthor(self, item):
+        return ''.join([Utility.clean(a.text) for div in item.find_all('div', 'grid') for dt in div.find_all('dt', 'g-col-lg-4 g-col-12') for a in div.find_all('a', class_=False) if dt.text == 'Main Author'])
+
+    def relNam(self, item):
+        values = [Utility.clean(a.text) for div in item.find_all('div', 'grid') for dt in div.find_all(
+            'dt', 'g-col-lg-4 g-col-12') for a in div.find_all('a', class_=False) if dt.text == 'Related Names']
+        return values if values != [] else ''
+
+    def subjects(self, item):
+        values = Utility.remSimp([Utility.clean(a.text).replace('/', '>') for div in item.find_all('div', 'grid') for dt in div.find_all(
+            'dt', 'g-col-lg-4 g-col-12') for a in div.find_all('a', class_=False) if dt.text == 'Subjects'])
+        return values if values != [] else ''
+
+    def isbn(self, item):
+        for div in item.find_all('div', 'grid'):
+            for dt in div.find_all('dt', 'g-col-lg-4 g-col-12'):
+                for dd in div.find_all('dd', 'g-col-lg-8 g-col-12'):
+                    if dt.text == 'ISBN':
+                        result = Utility.clean(dd.text).split()
+                        return result if result != [''] else ''
 
     def rdOriginSite(self, item) -> str:
         values = [a['href'] for dd in item.find_all(
             'dd', 'g-col-lg-8 g-col-12') for a in dd.find_all('a') if a.text == 'Find in a library']
-        try:
-            return values[0] if len(values) == 1 else values[0]
-        except IndexError:
-            return ''
+        return values if values != [] else ''
 
     def matching_is_not_a(self, value, item):
         if value not in self.rdMetadata(item):
@@ -145,24 +176,25 @@ class Select:
             case _:
                 npNum = re.search(
                     rf'&ft=&pagesize={self.pagesize}&page=(\d+)', np).group(1)
-        return int(npNum) if self.page == mp else int(npNum) if self.page < mp else ""
+        return '' if int(self.page) == int(mp) else int(npNum) if int(self.page) < int(mp) else ""
 
     def crawl(self, url):
         item = self.BSoup(
             url, 'article', 'record d-flex flex-column gap-3 p-3 mb-3 mt-3')
         title = item.find('div', 'article-heading d-flex gap-3').h1.text
+        # data = self.isbn(item)
         data = {
             'title': Utility.clean(title),
             'description': {
-                'main_author': self.rdValueA('Main Author', item),
-                'related_names': self.rdValueA('Related Names', item),
-                'language': self.matching_is_not_a('Language(s)', item),
+                'main_author': self.mainAuthor(item),
+                'related_names': self.relNam(item),
+                'languages': self.matching_is_not_a('Language(s)', item),
                 'published': self.matching_is_not_a('Published', item),
                 'edition': self.matching_is_not_a('Edition', item),
-                'subjects': self.rdValueA('Subjects', item),
+                'subjects': self.subjects(item),
                 'summary': self.matching_is_not_a('Summary', item),
                 'note': self.matching_is_not_a('Note', item),
-                'isbn': self.matching_is_not_a('ISBN', item),
+                'isbn': self.isbn(item) if self.isbn(item) != None else '',
                 'physical_description': self.matching_is_not_a('Physical Description', item),
                 'original_site': self.rdOriginSite(item)
             }
@@ -171,7 +203,7 @@ class Select:
 
     def displaysResults(self):
         datas = []
-        result = {
+        data = {
             'status': 200,
             'data': datas,
             'next_page': self.nextPage()
@@ -179,8 +211,20 @@ class Select:
         for link in self.getLink():
             datas.append(self.crawl(link))
 
-        results = dumps(result, indent=4)
+            fix_data, code = Utility.resp400(data)
+            results = dumps(fix_data, indent=4)
+            # with open('result.json', 'w') as file:
+            #     file.write(results)
         return Response(
             response=results,
-            headers={"Content-Type": "application/json; charset=UTF-8"}
+            headers={"Content-Type": "application/json; charset=UTF-8"},
+            status=code
         )
+
+
+# slct = Select('islam', 'subject')
+# slct.displaysResults()
+# links = slct.getLink()
+# for link in links:
+#     view = slct.crawl(link)
+#     print(view)
