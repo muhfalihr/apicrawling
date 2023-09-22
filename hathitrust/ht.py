@@ -182,7 +182,6 @@ class Select:
         item = self.BSoup(
             url, 'article', 'record d-flex flex-column gap-3 p-3 mb-3 mt-3')
         title = item.find('div', 'article-heading d-flex gap-3').h1.text
-        # data = self.isbn(item)
         data = {
             'title': Utility.clean(title),
             'description': {
@@ -213,18 +212,9 @@ class Select:
 
             fix_data, code = Utility.resp400(data)
             results = dumps(fix_data, indent=4)
-            # with open('result.json', 'w') as file:
-            #     file.write(results)
+
         return Response(
             response=results,
             headers={"Content-Type": "application/json; charset=UTF-8"},
             status=code
         )
-
-
-# slct = Select('islam', 'subject')
-# slct.displaysResults()
-# links = slct.getLink()
-# for link in links:
-#     view = slct.crawl(link)
-#     print(view)
