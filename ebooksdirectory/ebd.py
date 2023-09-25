@@ -51,7 +51,7 @@ class Utility:
 
     def clean(text):
         cleaned = re.sub(r'\n+', '\n', text)
-        # cleaned_text = re.sub(r'\s+', ' ', cleaned)
+        cleaned_text = re.sub(r'\s+', ' ', cleaned)
         # normalized = unicodedata.normalize('NFKD', cleaned_text)
         # ascii_text = normalized.encode('ascii', 'ignore').decode('ascii')
         # replace_text = ascii_text.replace('\"', "'").replace('\r\n', ' - ')
