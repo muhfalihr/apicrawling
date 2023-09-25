@@ -65,10 +65,10 @@ class Utility:
         '''Mengganti string uniq dengan dengan string sesuai format ascii, serta menghilangkan "\n" serta mengganati kutip dua menjadi kutip satu. Serta menghilangkan karakter tidak penting diakhir kalimat atau kata'''
         cleaned = re.sub(r'\n+', '\n', text)
         cleaned_text = re.sub(r'\s+', ' ', cleaned)
-        normalized = unicodedata.normalize('NFKD', cleaned_text)
-        ascii_text = normalized.encode('ascii', 'ignore').decode('ascii')
-        replace_text = ascii_text.replace('\"', "'").replace('\r\n', ' - ')
-        return replace_text.strip().rstrip(",./;'\=-:")
+        # normalized = unicodedata.normalize('NFKD', cleaned_text)
+        # ascii_text = normalized.encode('ascii', 'ignore').decode('ascii')
+        # replace_text = ascii_text.replace('\"', "'").replace('\r\n', ' - ')
+        return cleaned_text.strip().rstrip(",./;'\=-:")
 
     def unique(inList):
         '''Membuat value di sebuah list menjadi uniq'''
@@ -79,7 +79,7 @@ class Utility:
 
 class Select:
     def __init__(self, params, type=None, page=1, pagesize=10):
-        self.params = params
+        self.params = params.replace('%20', '+')
         self.type = type
         self.page = page
         self.pagesize = pagesize
@@ -182,6 +182,7 @@ class Select:
         item = self.BSoup(
             url, 'article', 'record d-flex flex-column gap-3 p-3 mb-3 mt-3')
         title = item.find('div', 'article-heading d-flex gap-3').h1.text
+        isbn = self.isbn(item) if self.isbn(item) != None else ''
         data = {
             'title': Utility.clean(title),
             'description': {
@@ -193,7 +194,7 @@ class Select:
                 'subjects': self.subjects(item),
                 'summary': self.matching_is_not_a('Summary', item),
                 'note': self.matching_is_not_a('Note', item),
-                'isbn': self.isbn(item) if self.isbn(item) != None else '',
+                'isbn': isbn,
                 'physical_description': self.matching_is_not_a('Physical Description', item),
                 'original_site': self.rdOriginSite(item)
             }

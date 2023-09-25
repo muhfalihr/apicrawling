@@ -12,10 +12,10 @@ class Utility:
         '''Mengganti string uniq dengan dengan string sesuai format ascii, serta menghilangkan "\n" serta mengganati kutip dua menjadi kutip satu. Serta menghilangkan karakter tidak penting diakhir kalimat atau kata'''
         cleaned = re.sub(r'\n+', '\n', text)
         cleaned_text = re.sub(r'\s+', ' ', cleaned)
-        normalized = unicodedata.normalize('NFKD', cleaned_text)
-        ascii_text = normalized.encode('ascii', 'ignore').decode('ascii')
-        replace_text = ascii_text.replace('\"', "'").replace('\r\n', ' - ')
-        return replace_text.strip().rstrip(",./;'\=-:")
+        # normalized = unicodedata.normalize('NFKD', cleaned_text)
+        # ascii_text = normalized.encode('ascii', 'ignore').decode('ascii')
+        # replace_text = ascii_text.replace('\"', "'").replace('\r\n', ' - ')
+        return cleaned_text.strip().rstrip(",./;'\=-:")
 
     def unique(inList):
         '''Membuat value di sebuah list menjadi uniq'''
