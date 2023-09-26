@@ -30,11 +30,11 @@ class Utility:
         datas_dumps = dumps(datas, indent=4)
         return datas_dumps, datas['status']
 
-    def resp400(datas: dict):
+    def resp404(datas: dict):
         if datas['data'] != []:
             return datas, datas['status']
         else:
-            datas.update({'status': 400})
+            datas.update({'status': 404})
             return datas, datas['status']
 
     def remSimp(values: list):
@@ -203,19 +203,32 @@ class Select:
 
     def displaysResults(self):
         datas = []
-        data = {
-            'status': 200,
-            'data': datas,
-            'next_page': self.nextPage()
-        }
-        for link in self.getLink():
-            datas.append(self.crawl(link))
+        try:
+            data = {
+                'status': 200,
+                'data': datas,
+                'next_page': self.nextPage()
+            }
+            for link in self.getLink():
+                datas.append(self.crawl(link))
 
-            fix_data, code = Utility.resp400(data)
-            results = dumps(fix_data, indent=4)
+                fix_data, code = Utility.resp404(data)
+                results = dumps(fix_data, indent=4)
 
-        return Response(
-            response=results,
-            headers={"Content-Type": "application/json; charset=UTF-8"},
-            status=code
-        )
+            return Response(
+                response=results,
+                headers={"Content-Type": "application/json; charset=UTF-8"},
+                status=code
+            )
+        except Exception as error:
+            response = {
+                "name": "HTTPError",
+                "message": "Internal Server Error",
+                "status": 500,
+                "detail": str(error)
+            }
+            return Response(
+                response=dumps(response, indent=4),
+                headers={"Content-Type": "application/json;"},
+                status=500
+            )

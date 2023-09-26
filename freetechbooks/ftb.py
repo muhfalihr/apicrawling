@@ -23,26 +23,16 @@ class Utility:
         [unique_list.append(x) for x in inList if x not in unique_list]
         return unique_list
 
-    def returnError(message):
-        '''Bila swagger mengambalikan server response 500 atau 400 maka akan memunculkan response body sesuai dengan ini.'''
-        datas = {
-            'status': 500,
-            'data': [],
-            'next_page': ''
-        }
-        datas_dumps = dumps(datas, indent=4)
-        return datas_dumps, datas['status']
-
     def espFN(text):
         words = text.split()
         reversed_text = ' '.join(words[1:])+f' {words[0]}'
         return reversed_text
 
-    def resp400(datas: dict):
+    def resp404(datas: dict):
         if datas['data'] != []:
             return datas, datas['status']
         else:
-            datas.update({'status': 400})
+            datas.update({'status': 404})
             return datas, datas['status']
 
 
@@ -240,81 +230,95 @@ class BrowseBooks:
 
     def displayResult(self):
         datas = []
-        match self.by:
-            case None:
-                data = {
-                    'status': 200,
-                    'data': datas
-                }
-                for link in self.getLink():
-                    datas.append(self.crawl(link=link))
+        try:
+            match self.by:
+                case None:
+                    data = {
+                        'status': 200,
+                        'data': datas
+                    }
+                    for link in self.getLink():
+                        datas.append(self.crawl(link=link))
 
-                fix_data, code = Utility.resp400(data)
-                results = dumps(fix_data, indent=4)
-            case 'topics':
-                data = {
-                    'status': 200,
-                    'data': datas,
-                    'next_page': self.nextPage()
-                }
-                for link in self.getLink():
-                    datas.append(self.crawl(link=link))
+                    fix_data, code = Utility.resp400(data)
+                    results = dumps(fix_data, indent=4)
+                case 'topics':
+                    data = {
+                        'status': 200,
+                        'data': datas,
+                        'next_page': self.nextPage()
+                    }
+                    for link in self.getLink():
+                        datas.append(self.crawl(link=link))
 
-                fix_data, code = Utility.resp400(data)
-                results = dumps(fix_data, indent=4)
+                    fix_data, code = Utility.resp400(data)
+                    results = dumps(fix_data, indent=4)
 
-            case 'categories':
-                data = {
-                    'status': 200,
-                    'data': datas
-                }
-                subcat_links, subcat_name, subcat_id = self.allSubCategories()
-                for links, name, id in zip(subcat_links, subcat_name, subcat_id):
-                    datas.append(self.crawl(links, name, id))
+                case 'categories':
+                    data = {
+                        'status': 200,
+                        'data': datas
+                    }
+                    subcat_links, subcat_name, subcat_id = self.allSubCategories()
+                    for links, name, id in zip(subcat_links, subcat_name, subcat_id):
+                        datas.append(self.crawl(links, name, id))
 
-                fix_data, code = Utility.resp400(data)
-                results = dumps(fix_data, indent=4)
+                    fix_data, code = Utility.resp400(data)
+                    results = dumps(fix_data, indent=4)
 
-            case 'authors':
-                data = {
-                    'status': 200,
-                    'data': datas,
-                    'next_page': self.nextPage()
-                }
-                author_links, author_name, authorid = self.fnAuthorLinks()
-                for links, name, id in zip(author_links, author_name, authorid):
-                    datas.append(self.crawl(links, Utility.espFN(name), id))
+                case 'authors':
+                    data = {
+                        'status': 200,
+                        'data': datas,
+                        'next_page': self.nextPage()
+                    }
+                    author_links, author_name, authorid = self.fnAuthorLinks()
+                    for links, name, id in zip(author_links, author_name, authorid):
+                        datas.append(self.crawl(
+                            links, Utility.espFN(name), id))
 
-                fix_data, code = Utility.resp400(data)
-                results = dumps(fix_data, indent=4)
+                    fix_data, code = Utility.resp400(data)
+                    results = dumps(fix_data, indent=4)
 
-            case 'publishers' | 'licenses':
-                data = {
-                    'status': 200,
-                    'data': datas,
-                    'next_page': self.nextPage()
-                }
-                pub_links, pub_name, pub_id = self.pubslicense()
-                for links, name, id in zip(pub_links, pub_name, pub_id):
-                    datas.append(self.crawl(links, name, id))
+                case 'publishers' | 'licenses':
+                    data = {
+                        'status': 200,
+                        'data': datas,
+                        'next_page': self.nextPage()
+                    }
+                    pub_links, pub_name, pub_id = self.pubslicense()
+                    for links, name, id in zip(pub_links, pub_name, pub_id):
+                        datas.append(self.crawl(links, name, id))
 
-                fix_data, code = Utility.resp400(data)
-                results = dumps(fix_data, indent=4)
+                    fix_data, code = Utility.resp400(data)
+                    results = dumps(fix_data, indent=4)
 
-            case _:
-                data = {
-                    'status': 200,
-                    'data': datas,
-                    'next_page': self.nextPage()
-                }
-                for link in self.getLink():
-                    datas.append(self.crawl(link=link))
+                case _:
+                    data = {
+                        'status': 200,
+                        'data': datas,
+                        'next_page': self.nextPage()
+                    }
+                    for link in self.getLink():
+                        datas.append(self.crawl(link=link))
 
-                fix_data, code = Utility.resp400(data)
-                results = dumps(fix_data, indent=4)
+                    fix_data, code = Utility.resp404(data)
+                    results = dumps(fix_data, indent=4)
 
-        return Response(
-            response=results,
-            headers={"Content-Type": "application/json; charset=UTF-8"},
-            status=code
-        )
+            return Response(
+                response=results,
+                headers={"Content-Type": "application/json; charset=UTF-8"},
+                status=code
+            )
+        except Exception as error:
+            response = {
+                "name": "HTTPError",
+                "message": "Internal Server Error",
+                "status": 500,
+                "detail": str(error)
+            }
+            return Response(
+                response=dumps(response, indent=4),
+                headers={"Content-Type": "application/json;"},
+                status=500
+            )

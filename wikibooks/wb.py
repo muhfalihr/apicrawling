@@ -1,6 +1,8 @@
 import re
 from json import dumps, loads
-from flask import Response
+from flask import Response, send_file
+from io import BytesIO
+from datetime import datetime
 
 from bs4 import BeautifulSoup
 import requests
@@ -22,23 +24,6 @@ class Utility:
         [unique_list.append(x) for x in inList if x not in unique_list]
         return unique_list
 
-    def returnError(message):
-        '''Bila swagger mengambalikan server response 500 atau 400 maka akan memunculkan response body sesuai dengan ini.'''
-        datas = {
-            'status': 500,
-            'data': [],
-            'next_page': ''
-        }
-        datas_dumps = dumps(datas, indent=4)
-        return datas_dumps, datas['status']
-
-    def resp400(datas: dict):
-        if datas['data'] != []:
-            return datas, datas['status']
-        else:
-            datas.update({'status': 400})
-            return datas, datas['status']
-
     def tostring(value: list):
         return ', '.join([' '.join(item) for item in value])
 
@@ -48,39 +33,39 @@ class TakeWB:
         self.departement = departement
         self.listDepartement = listDepartement
         self.id = id
-        self.keyword = keyword.replace(' ', '+')
+        self.keyword = keyword
         self.limit = limit
         self.page = page
         self.offset = int(page)*int(limit)
         self.ua = {
             'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'}
-        if self.listDepartement is True:
+        if self.listDepartement == True:
             self.url = 'https://en.wikibooks.org/wiki/Main_Page'
         elif self.departement != None:
             self.url = f'https://en.wikibooks.org/wiki/Department:{self.departement}'
         elif self.id != None:
             self.url = f'https://en.wikibooks.org/w/api.php?action=query&prop=revisions&titles={self.id}&rvslots=*&rvprop=content&formatversion=2&format=json'
         elif self.keyword != None:
-            self.url = f'https://en.wikibooks.org/w/index.php?title=Special:Search&limit={self.limit}&offset={self.offset}&ns0=1&search={self.keyword}'
+            self.url = f'https://en.wikibooks.org/w/index.php?title=Special:Search&limit={self.limit}&offset={self.offset}&ns0=1&search={self.keyword.replace(" ", "+")}'
+        self.resp = requests.get(self.url, headers=self.ua)
+        self.soup = BeautifulSoup(self.resp.text, 'lxml')
 
     def BSoup(self, tag=None, attr=None):
-        resp = requests.get(self.url, headers=self.ua)
-        soup = BeautifulSoup(resp.text, 'lxml')
         match attr:
             case {'style': 'flex: 1 0 50%; width:50%; min-width:10em; float: right; box-sizing: border-box; font-size:95%; display: flex; flex-wrap: wrap;'}:
-                for item in soup.find_all(tag, attr):
+                for item in self.soup.find_all(tag, attr):
                     return item
             case {'style': 'vertical-align:top; height:1%; padding:0em 0.5em 0.2em 0.5em; width:50%;'}:
-                for item in soup.find_all(tag, attr):
+                for item in self.soup.find_all(tag, attr):
                     return item
             case 'vector-body':
-                for item in soup.find_all(tag, attr):
+                for item in self.soup.find_all(tag, attr):
                     return item
             case {'id': 'mw-search-top-table'}:
-                for item in soup.find_all(tag, attr):
+                for item in self.soup.find_all(tag, attr):
                     return item
             case _:
-                return soup
+                return self.soup
 
     def nextPage(self, item):
         count = ''.join([div['data-mw-num-results-total']
@@ -151,49 +136,96 @@ class TakeWB:
 
     def displayResult(self):
         datas = []
-        if self.listDepartement is True:
-            item = self.BSoup('div', {
-                              'style': 'flex: 1 0 50%; width:50%; min-width:10em; float: right; box-sizing: border-box; font-size:95%; display: flex; flex-wrap: wrap;'})
-            data = {
-                "status": 200,
-                "data": datas
-            }
-            links, titles, ids = self.dept(item)
-            for link, title, id in zip(links, titles, ids):
-                datas.append(self.crawl(link, title, id))
-        elif self.departement != None:
-            item = self.BSoup('td', {
-                              'style': 'vertical-align:top; height:1%; padding:0em 0.5em 0.2em 0.5em; width:50%;'})
-            data = {
-                "status": 200,
-                "data": datas
-            }
-            links, titles, ids = self.featuredBooks(item)
-            for link, title, id in zip(links, titles, ids):
-                datas.append(self.crawl(link, title, id))
-        elif self.id != None:
-            item = self.BSoup()
-            title, content = self.book(item)
-            data = {
-                "status": 200,
-                "data": self.crawl(title=title, content=content)
-            }
-        elif self.keyword != None:
-            item = self.BSoup('div', 'vector-body')
-            data = {
-                "status": 200,
-                "data": datas,
-                "next_page": self.nextPage(item)
-            }
-            links, titles, ids, filesize, countword = self.takeResults(item)
-            for link, title, id, fs, cw in zip(links, titles, ids, filesize, countword):
-                datas.append(self.crawl(link, title, id, fs, cw))
+        status_code = self.resp.status_code
+        try:
+            if self.listDepartement == True:
+                item = self.BSoup('div', {
+                    'style': 'flex: 1 0 50%; width:50%; min-width:10em; float: right; box-sizing: border-box; font-size:95%; display: flex; flex-wrap: wrap;'})
+                data = {
+                    "status": status_code,
+                    "data": datas
+                }
+                links, titles, ids = self.dept(item)
+                for link, title, id in zip(links, titles, ids):
+                    datas.append(self.crawl(link, title, id))
+            elif self.departement != None:
+                item = self.BSoup('td', {
+                    'style': 'vertical-align:top; height:1%; padding:0em 0.5em 0.2em 0.5em; width:50%;'})
+                data = {
+                    "status": status_code,
+                    "data": datas
+                }
+                links, titles, ids = self.featuredBooks(item)
+                for link, title, id in zip(links, titles, ids):
+                    datas.append(self.crawl(link, title, id))
+            elif self.id != None:
+                item = self.BSoup()
+                title, content = self.book(item)
+                data = {
+                    "status": status_code,
+                    "data": self.crawl(title=title, content=content)
+                }
+            elif self.keyword != None:
+                item = self.BSoup('div', 'vector-body')
+                data = {
+                    "status": status_code,
+                    "data": datas,
+                    "next_page": self.nextPage(item)
+                }
+                links, titles, ids, filesize, countword = self.takeResults(
+                    item)
+                for link, title, id, fs, cw in zip(links, titles, ids, filesize, countword):
+                    datas.append(self.crawl(link, title, id, fs, cw))
 
-        fix_data, code = Utility.resp400(data)
-        results = dumps(fix_data, indent=4)
+            results = dumps(data, indent=4)
 
-        return Response(
-            response=results,
-            headers={"Content-Type": "application/json; charset=UTF-8"},
-            status=code
-        )
+            return Response(
+                response=results,
+                headers={"Content-Type": "application/json; charset=UTF-8"},
+                status=status_code
+            )
+        except Exception as error:
+            response = {
+                "name": "HTTPError",
+                "message": "Internal Server Error",
+                "status": 500,
+                "detail": str(error)
+            }
+            return Response(
+                response=dumps(response, indent=4),
+                headers={"Content-Type": "application/json;"},
+                status=500
+            )
+
+
+class download:
+    def __init__(self, title):
+        self.title = title
+        self.url = f'https://en.wikibooks.org/api/rest_v1/page/pdf/{title}'
+        self.headers = {
+            'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'}
+
+    def req(self):
+        resp = requests.get(self.url, headers=self.headers)
+
+        if resp.status_code == 200:
+            content = resp.content
+            headers = resp.headers
+            content_type = headers['content-type']
+            filename = self.title+'.pdf'
+
+            file = BytesIO(content)
+
+            response = send_file(
+                path_or_file=file, as_attachment=True, mimetype=content_type, download_name=filename, last_modified=datetime.now())
+
+            return response
+        else:
+            soup = BeautifulSoup(resp.text, 'lxml')
+            response = [resp.text for resp in soup.find_all('p')]
+
+            return Response(
+                response=response,
+                headers={"Content-Type": "application/json; charset=UTF-8"},
+                status=resp.status_code
+            )

@@ -2,7 +2,7 @@ from ebooksdirectory import Utility as UEBD, MatchingEBD
 from hathitrust import Utility as UHT, Select
 from freetechbooks import BrowseBooks, Utility as UFCB
 from pdfdrive import Search, Utility as UPD
-from wikibooks import TakeWB, Utility as UWB
+from wikibooks import TakeWB, Utility as UWB, download as Download
 
 from flask_restx import Api, Resource
 from flask import Flask, Response, request
@@ -85,18 +85,14 @@ default = list(value)[0]
 )
 class GetValueHT(Resource):
     def get(self):
-        try:
-            keyword = request.args.get('keyword')
-            value = request.args.get('types')
-            type = ''.join(
-                [key for key, val in UHT.types.items() if val == value])
-            page = request.args.get('page')
-            pagesize = request.args.get('pagesize')
-            match = Select(keyword, type, page, pagesize)
-            return match.displaysResults()
-        except Exception as ex:
-            resp, code = UHT.returnError(ex)
-            return Response(response=resp, status=code)
+        keyword = request.args.get('keyword')
+        value = request.args.get('types')
+        type = ''.join(
+            [key for key, val in UHT.types.items() if val == value])
+        page = request.args.get('page')
+        pagesize = request.args.get('pagesize')
+        match = Select(keyword, type, page, pagesize)
+        return match.displaysResults()
 
 
 @ns3.route('/get-all-books')
@@ -317,31 +313,23 @@ class GetValueLic(Resource):
 )
 class GetValuePD(Resource):
     def get(self):
-        try:
-            keyword = request.args.get('keyword')
-            pc = request.args.get('pagecount')
-            pagecount = ''.join(
-                [key for key, val in UPD.pagecount.items() if val == pc])
-            pubyear = request.args.get('pubyear')
-            exactmatch = request.args.get('exactmatch')
-            page = request.args.get('page')
-            SS = Search(keyword, pagecount, pubyear,
-                        exactmatch=exactmatch, page=page)
-            return SS.displayResult()
-        except Exception as ex:
-            resp, code = UPD.returnError(ex)
-            return Response(response=resp, status=code)
+        keyword = request.args.get('keyword')
+        pc = request.args.get('pagecount')
+        pagecount = ''.join(
+            [key for key, val in UPD.pagecount.items() if val == pc])
+        pubyear = request.args.get('pubyear')
+        exactmatch = request.args.get('exactmatch')
+        page = request.args.get('page')
+        SS = Search(keyword, pagecount, pubyear,
+                    exactmatch=exactmatch, page=page)
+        return SS.displayResult()
 
 
 @ns4.route('/get-all-categories')
 class GetAllCat(Resource):
     def get(self):
-        try:
-            SS = Search(categories_list=True)
-            return SS.displayResult()
-        except Exception as ex:
-            resp, code = UPD.returnError(ex)
-            return Response(response=resp, status=code)
+        SS = Search(categories_list=True)
+        return SS.displayResult()
 
 
 @ns4.route('/get-subcategories-by-id')
@@ -355,13 +343,9 @@ class GetAllCat(Resource):
 )
 class GetAllSubCat(Resource):
     def get(self):
-        try:
-            category = request.args.get('categoryid')
-            SS = Search(category=category, categories_list=True, subcat=True)
-            return SS.displayResult()
-        except Exception as ex:
-            resp, code = UPD.returnError(ex)
-            return Response(response=resp, status=code)
+        category = request.args.get('categoryid')
+        SS = Search(category=category, categories_list=True, subcat=True)
+        return SS.displayResult()
 
 
 @ns4.route('/get-books-by-categories-or-subcategories')
@@ -380,25 +364,17 @@ class GetAllSubCat(Resource):
 )
 class GetCatSubcat(Resource):
     def get(self):
-        try:
-            catsubcatid = request.args.get('cat_subcat_id')
-            page = request.args.get('page')
-            SS = Search(category=catsubcatid, page=page)
-            return SS.displayResult()
-        except Exception as ex:
-            resp, code = UPD.returnError(ex)
-            return Response(response=resp, status=code)
+        catsubcatid = request.args.get('cat_subcat_id')
+        page = request.args.get('page')
+        SS = Search(category=catsubcatid, page=page)
+        return SS.displayResult()
 
 
 @ns5.route('/get-all-departements')
 class GetAllDept(Resource):
     def get(self):
-        try:
-            TWB = TakeWB(listDepartement=True)
-            return TWB.displayResult()
-        except Exception as ex:
-            resp, code = UWB.returnError(ex)
-            return Response(response=resp, status=code)
+        TWB = TakeWB(listDepartement=True)
+        return TWB.displayResult()
 
 
 @ns5.route('/get-all-featured-books-by-departements')
@@ -412,13 +388,9 @@ class GetAllDept(Resource):
 )
 class GetAllFB(Resource):
     def get(self):
-        try:
-            departement = request.args.get('departement')
-            TWB = TakeWB(departement=departement)
-            return TWB.displayResult()
-        except Exception as ex:
-            resp, code = UWB.returnError(ex)
-            return Response(response=resp, status=code)
+        departement = request.args.get('departement')
+        TWB = TakeWB(departement=departement)
+        return TWB.displayResult()
 
 
 @ns5.route('/get-featured-books')
@@ -432,13 +404,9 @@ class GetAllFB(Resource):
 )
 class GetFB(Resource):
     def get(self):
-        try:
-            departement = request.args.get('departement')
-            TWB = TakeWB(id=departement)
-            return TWB.displayResult()
-        except Exception as ex:
-            resp, code = UWB.returnError(ex)
-            return Response(response=resp, status=code)
+        departement = request.args.get('departement')
+        TWB = TakeWB(id=departement)
+        return TWB.displayResult()
 
 
 @ns5.route('/get-books-by-search')
@@ -462,15 +430,27 @@ class GetFB(Resource):
 )
 class GetBooksSearch(Resource):
     def get(self):
-        try:
-            keyword = request.args.get('keyword')
-            page = request.args.get('page')
-            pagesize = request.args.get('pagesize')
-            TWB = TakeWB(keyword=keyword, limit=pagesize, page=page)
-            return TWB.displayResult()
-        except Exception as ex:
-            resp, code = UWB.returnError(ex)
-            return Response(response=resp, status=code)
+        keyword = request.args.get('keyword')
+        page = request.args.get('page')
+        pagesize = request.args.get('pagesize')
+        TWB = TakeWB(keyword=keyword, limit=pagesize, page=page)
+        return TWB.displayResult()
+
+
+@ns5.route('/download/pdf')
+@ns5.doc(
+    params={
+        "title": {
+            "description": "taken from the result ids of all endpoints",
+            "required": True
+        }
+    }
+)
+class DownloadPDF(Resource):
+    def get(self):
+        title = request.args.get('title')
+        download = Download(title)
+        return download.req()
 
 
 if __name__ == '__main__':

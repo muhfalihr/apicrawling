@@ -35,21 +35,11 @@ class Utility:
         [unique_list.append(x) for x in inList if x not in unique_list]
         return unique_list
 
-    def returnError(message):
-        '''Bila swagger mengambalikan server response 500 atau 400 maka akan memunculkan response body sesuai dengan ini.'''
-        datas = {
-            'status': 500,
-            'data': [],
-            'next_page': ''
-        }
-        datas_dumps = dumps(datas, indent=4)
-        return datas_dumps, datas['status']
-
-    def resp400(datas: dict):
+    def resp404(datas: dict):
         if datas['data'] != []:
             return datas, datas['status']
         else:
-            datas.update({'status': 400})
+            datas.update({'status': 404})
             return datas, datas['status']
 
 
@@ -79,7 +69,7 @@ class Search:
         soup = BeautifulSoup(resp.text, 'lxml')
         match clss:
             case None:
-                for item in soup.find_all('div', 'files-new'):
+                for item in soup.find_all('div', 'dialog-left'):
                     return item
             case 'ebook-main':
                 for item in soup.find_all(tag, clss):
@@ -94,8 +84,7 @@ class Search:
                 for item in soup.find_all(tag, {'id': 'categories subcategories'}):
                     return item
 
-    def getLink(self):
-        item = self.BSoup(self.link)
+    def getLink(self, item):
         match self.category:
             case None:
                 return ['https://www.pdfdrive.com'+a['href'] for div in item.find_all('div', 'file-right') for a in div.find_all('a', 'ai-search')]
@@ -131,9 +120,9 @@ class Search:
     def download(self, item):
         return ''.join(['https://www.pdfdrive.com'+a['href'] for span in item.find_all('span', {'id': 'download-button'}) for a in span.find_all('a', {'id': 'download-button-link'})])
 
-    def nextPage(self):
-        item = self.BSoup(self.link, 'div', 'pagination')
-        mp = [li.text for li in item.find_all('li', class_=False)][-2]
+    def nextPage(self, items):
+        mp = [li.text for item in items.find_all(
+            'div', 'pagination') for li in item.find_all('li', class_=False)][-2]
         return int(self.page)+1 if int(self.page) < int(mp) else '' if int(mp) == int(self.page) else ''
 
     def categories(self):
@@ -157,8 +146,8 @@ class Search:
         return links, name, id
 
     def crawl(self, link=None, cat=None, id=None):
-        match self.categories_list:
-            case False:
+        match cat:
+            case None:
                 item = self.BSoup(link, 'div', 'ebook-main')
                 values = self.infoGreen(item)
                 data = {
@@ -171,7 +160,7 @@ class Search:
                     'language': values[-1],
                     'download_link': self.download(item)
                 }
-            case True:
+            case _:
                 data = {
                     'link': link,
                     'category': cat,
@@ -181,39 +170,55 @@ class Search:
 
     def displayResult(self):
         datas = []
-        match self.categories_list:
-            case False:
-                data = {
-                    'status': 200,
-                    'data': datas,
-                    'next_page': self.nextPage()
-                }
-                for link in self.getLink():
-                    datas.append(self.crawl(link))
+        try:
+            match self.categories_list:
+                case False:
+                    item = self.BSoup(self.link)
+                    data = {
+                        'status': 200,
+                        'data': datas,
+                        'next_page': self.nextPage(item)
+                    }
+                    for link in self.getLink(item):
+                        datas.append(self.crawl(link))
 
-                    fix_data, code = Utility.resp400(data)
+                        fix_data, code = Utility.resp404(data)
+                        results = dumps(fix_data, indent=4)
+
+                case True:
+                    data = {
+                        'status': 200,
+                        'data': datas
+                    }
+                    match self.subcat:
+                        case False:
+                            links, category, id_cat = self.categories()
+                            for link, cat, id in zip(links, category, id_cat):
+                                datas.append(self.crawl(link, cat, id))
+                        case True:
+                            subcat_links, subcat, subcat_id = self.subcategories()
+                            for link, cat, id in zip(subcat_links, subcat, subcat_id):
+                                datas.append(self.crawl(link, cat, id))
+
+                    fix_data, code = Utility.resp404(data)
                     results = dumps(fix_data, indent=4)
 
-            case True:
-                data = {
-                    'status': 200,
-                    'data': datas
-                }
-                match self.subcat:
-                    case False:
-                        links, category, id_cat = self.categories()
-                        for link, cat, id in zip(links, category, id_cat):
-                            datas.append(self.crawl(link, cat, id))
-                    case True:
-                        subcat_links, subcat, subcat_id = self.subcategories()
-                        for link, cat, id in zip(subcat_links, subcat, subcat_id):
-                            datas.append(self.crawl(link, cat, id))
+            return Response(
+                response=results,
+                headers={
+                    "Content-Type": "application/json; charset=UTF-8"},
+                status=code
+            )
 
-                fix_data, code = Utility.resp400(data)
-                results = dumps(fix_data, indent=4)
-
-        return Response(
-            response=results,
-            headers={"Content-Type": "application/json; charset=UTF-8"},
-            status=code
-        )
+        except Exception as error:
+            response = {
+                "name": "HTTPError",
+                "message": "Internal Server Error",
+                "status": 500,
+                "detail": str(error)
+            }
+            return Response(
+                response=dumps(response, indent=4),
+                headers={"Content-Type": "application/json;"},
+                status=500
+            )

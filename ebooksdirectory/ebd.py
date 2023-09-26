@@ -32,21 +32,11 @@ class Utility:
         else:
             return soup.find_all('article', 'main_categories')
 
-    def returnError(message):
-        '''Bila swagger mengambalikan server response 500 atau 400 maka akan memunculkan response body sesuai dengan ini.'''
-        datas = {
-            'status': 500,
-            'data': [],
-            'next_page': ''
-        }
-        datas_dumps = dumps(datas, indent=4)
-        return datas_dumps, datas['status']
-
-    def resp400(datas: dict):
+    def resp404(datas: dict):
         if datas['data'] != []:
             return datas, datas['status']
         else:
-            datas.update({'status': 400})
+            datas.update({'status': 404})
             return datas, datas['status']
 
     def clean(text):
@@ -55,7 +45,7 @@ class Utility:
         # normalized = unicodedata.normalize('NFKD', cleaned_text)
         # ascii_text = normalized.encode('ascii', 'ignore').decode('ascii')
         # replace_text = ascii_text.replace('\"', "'").replace('\r\n', ' - ')
-        return cleaned.strip()
+        return cleaned_text.strip()
 
 
 class Categories:
@@ -264,7 +254,7 @@ class Save:
             }
             results.append(data)
 
-            fix_data, code = Utility.resp400(datas)
+            fix_data, code = Utility.resp404(datas)
             datas_dumps = dumps(fix_data, indent=4)
 
         return datas_dumps, code
@@ -277,18 +267,31 @@ class MatchingEBD:
         self.nop = nop
 
     def match(self):
-        match self.filter:
-            case 'categories':
-                cat = Utility.cat.index(self.category)
-                save = Save(Utility.links[cat])
-                results, code = save.returnSuccess()
-            case 'new' | 'top' | 'popular':
-                urls = GrabTheLink.takeNTP(int(self.nop), self.filter)
-                save = Save(urls)
-                results, code = save.returnSuccess()
+        try:
+            match self.filter:
+                case 'categories':
+                    cat = Utility.cat.index(self.category)
+                    save = Save(Utility.links[cat])
+                    results, code = save.returnSuccess()
+                case 'new' | 'top' | 'popular':
+                    urls = GrabTheLink.takeNTP(int(self.nop), self.filter)
+                    save = Save(urls)
+                    results, code = save.returnSuccess()
 
-        return Response(
-            response=results,
-            headers={"Content-Type": "application/json; charset=UTF-8"},
-            status=code
-        )
+            return Response(
+                response=results,
+                headers={"Content-Type": "application/json; charset=UTF-8"},
+                status=code
+            )
+        except Exception as error:
+            response = {
+                "name": "HTTPError",
+                "message": "Internal Server Error",
+                "status": 500,
+                "detail": str(error)
+            }
+            return Response(
+                response=dumps(response, indent=4),
+                headers={"Content-Type": "application/json;"},
+                status=500
+            )
