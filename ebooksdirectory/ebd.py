@@ -1,7 +1,6 @@
-from json import dumps, load
 import re
-import unicodedata
-
+from json import dumps
+from time import time
 
 from bs4 import BeautifulSoup
 import requests
@@ -10,27 +9,6 @@ from flask import Response
 
 class Utility:
     filters = ["categories", "new", "top", "popular"]
-    cat = ["Arts & Photography", "Biographies & Memoirs", "Business & Investing", "Children's Books", "Comics & Graphic Novels", "Computers & Internet", "Cooking, Food & Wine", "Engineering", "Entertainment",
-           "Health, Mind & Body", "History", "Humanities", "Law", "Literature & Fiction", "Mathematics", "Medicine", "Nonfiction", "Outdoors & Nature", "Religion & Spirituality", "Science", "Science Fiction & Fantasy", "Travel"]
-
-    with open('ebooksdirectory/listLinks.json', 'r') as file:
-        links = load(file)
-
-    def __init__(self):
-        pass
-
-    def soup(link):
-        user_agent = {
-            'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'}
-
-        req = requests.get(link, headers=user_agent)
-
-        soup = BeautifulSoup(req.text, 'lxml')
-
-        if 'listing.php' in link:
-            return soup.find_all('section', 'main_content')
-        else:
-            return soup.find_all('article', 'main_categories')
 
     def resp404(datas: dict):
         if datas['data'] != []:
@@ -42,246 +20,170 @@ class Utility:
     def clean(text):
         cleaned = re.sub(r'\n+', '\n', text)
         cleaned_text = re.sub(r'\s+', ' ', cleaned)
-        # normalized = unicodedata.normalize('NFKD', cleaned_text)
-        # ascii_text = normalized.encode('ascii', 'ignore').decode('ascii')
-        # replace_text = ascii_text.replace('\"', "'").replace('\r\n', ' - ')
         return cleaned_text.strip()
 
 
-class Categories:
-    def __init__(self, items):
-        self.items = items
+class AllCategories:
+    def __init__(self, option=None, allcategories=False, id=None, countpage=1):
+        self.allcategories = allcategories
+        self.option = option if option != 'top' else 'top20'
+        self.id = id
+        self.countpage = int(countpage)
         self.headlink = 'http://www.e-booksdirectory.com/'
-
-    def cat_smallText(self, cat_large):
-        result = [[] for _ in range(len(cat_large))]
-
-        for i in range(len(cat_large)):
-            for item in self.items:
-                for table in item.find_all('table'):
-                    cs = [cs.text for cs in table.find_all('td', 'cat_small')[
-                        i] if cs.text.strip() != '']
-                    result[i].extend(cs)
-        hasil = [[''] if not sublist else sublist for sublist in result]
-        return hasil
-
-    def cat_smallLink(self):
-        result = [[self.headlink+a['href'] for a in cs.find_all('a')] for item in self.items for table in item.find_all(
-            'table') for cs in table.find_all('td', 'cat_small')]
-        hasil = [[''] if not sublist else sublist for sublist in result]
-        return hasil
-
-    def cat_largeText(self):
-        return [cl.text for item in self.items for table in item.find_all(
-            'table') for cl in table.find_all('td', 'cat_large')]
-
-    def cat_largeLink(self):
-        return [self.headlink+a['href'] for item in self.items for table in item.find_all(
-            'table') for cl in table.find_all('td', 'cat_large') for a in cl.find_all('a')]
-
-
-class GrabTheLink:
-    def __init__(self):
-        pass
-
-    def takeHref(links):
-        try:
-            linkhref = ['http://www.e-booksdirectory.com/' + a['href'] for item in Utility.soup(
-                links) for article in item.find_all('article', 'img_list') for a in article.find_all('a')]
-        except:
-            linkhref = ['http://www.e-booksdirectory.com/' + a['href']
-                        for link in links
-                        if link != ''
-                        for item in Utility.soup(link) for article in item.find_all('article', 'img_list') for a in article.find_all('a')]
-        return linkhref
-
-    def takeLinkCategories(self):
-        link = 'http://www.e-booksdirectory.com/'
-        items = Utility.soup(link)
-
-        kategori = Categories(items)
-
-        clText = kategori.cat_largeText()
-        clLink = kategori.cat_largeLink()
-        csLink = kategori.cat_smallLink()
-
-        all_categories = []
-        for i in range(len(clText)):
-            data = self.takeHref(clLink[i]) + self.takeHref(csLink[i])
-            all_categories.append(data)
-
-            datas_dumps = dumps(all_categories, indent=4)
-
-            try:
-                with open('links.json', 'w') as file:
-                    file.write(datas_dumps)
-            except:
-                with open('links.json', 'r+') as file:
-                    file.write(datas_dumps)
-
-    def takeNTP(page: int, option: str):
-        '''page = Berapa page yang akan anda ambil linknya, option = (new, top, popular) pilihan page yang akan anda ambil linknya. (Defaultnya New)'''
-        user_agent = {
+        self.headers = {
             'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'}
 
-        match option.lower():
-            case 'new':
-                url = 'http://www.e-booksdirectory.com/new.php'
-            case 'top':
-                url = 'http://www.e-booksdirectory.com/top20.php'
-            case 'popular':
-                url = 'http://www.e-booksdirectory.com/popular.php'
+        match self.option:
+            case 'categories':
+                self.link = f'http://www.e-booksdirectory.com/listing.php?category={self.id}'
 
-        resp = requests.get(url, headers=user_agent)
+            case 'new' | 'top20' | 'popular':
+                self.link = f'http://www.e-booksdirectory.com/{self.option}.php'
 
+            case _:
+                self.link = 'http://www.e-booksdirectory.com'
+
+    def BSoup(self, link):
+        resp = requests.get(link, headers=self.headers)
         soup = BeautifulSoup(resp.text, 'lxml')
+        return soup.find_all('section', 'main_content'), resp
 
-        items = soup.find_all('article', 'img_list')
+    def allCategories(self, item):
+        links = [self.headlink+a['href']
+                 for article in item[0].find_all('article', 'main_categories') for a in article.find_all('a', class_=False)]
+        names = [a.text for article in item[0].find_all('article', 'main_categories') for a in article.find_all(
+            'a', class_=False)]
+        ids = [re.search(r'category=(\d+)', a['href']).group(1)
+               for article in item[0].find_all('article', 'main_categories') for a in article.find_all('a', class_=False)]
 
-        hrefLinks = []
-        [hrefLinks.append('http://www.e-booksdirectory.com/'+a['href'])
-         for item in items for a in item.find_all('a')]
+        return links, names, ids
 
-        if page < 1:
+    def articleLinks(self, item):
+        return [self.headlink+a['href'] for article in item[0].find_all('article', 'img_list') for a in article.find_all('a', class_=False)]
+
+    def articleData(self, item):
+        article = [artikel for artikel in item[0].find_all(
+            'article', {'itemtype': 'http://schema.org/Book'})]
+
+        image = ''.join([self.headlink+img['src']
+                        for img in article[0].find_all('img', {'itemprop': 'image'})])
+        title = ''.join([strong.text for strong in article[0].find_all(
+            'strong', {'itemprop': 'name'})])
+        author = ''.join(
+            [span.text for span in article[0].find_all('span', {'itemprop': 'author'})])
+        publisher = ''.join(
+            [span.text for span in article[0].find_all('span', {'itemprop': 'publisher'})])
+        datePublished = ''.join(
+            [span.text for span in article[0].find_all('span', {'itemprop': 'datePublished'})])
+        nop = ''.join(
+            [span.text for span in article[0].find_all('span', {'itemprop': 'numberOfPages'})])
+        desc = ''.join(
+            [span.text for span in article[0].find_all('span', {'itemprop': 'description'})])
+        isbn = ''.join(
+            [span.text for span in article[0].find_all('span', {'itemprop': 'isbn'})])
+        download = ''.join([a['href'] for a in article[0].find_all(
+            'a', {'target': '_blank'}) if a.text == 'Download link'])
+
+        return image, title, author, publisher, datePublished, nop, desc, isbn, download
+
+    def nextPage(self, item):
+        for input in item[0].find_all('input', 'submit_button'):
+            if input['value'] == 'Next':
+                return self.countpage + 1
+            elif input['value'] == 'Prev':
+                return ''
+
+    def NTPLinks(self, item):
+        if self.countpage < 1:
             return ['']
+        elif self.countpage == 1:
+            links = self.articleLinks(item)
+            return links
+        else:
+            num = 0
+            for i in range(self.countpage-1):
+                data = {
+                    "submit": "Next",
+                    "startid": f"{0+num}"
+                }
 
-        num = 0
-        for i in range(page-1):
-            data = {
-                'submit': 'Next',
-                'startid': f'{0+num}'
-            }
+                resp = requests.post(self.link, data=data)
+                soup = BeautifulSoup(resp.text, 'lxml')
+                items = soup.find_all('section', 'main_content')
+                num += 20
 
-            response = requests.post(url, data=data)
+            links = self.articleLinks(items)
+            return links
 
-            soup = BeautifulSoup(response.text, 'html.parser')
+    def crawl(self, link=None, name=None, id=None):
+        match self.allcategories:
+            case True:
+                data = {
+                    "id": id,
+                    "link": link,
+                    "name": name
+                }
+            case False:
+                item, resp = self.BSoup(link)
+                image, title, author, publisher, datePublished, nop, desc, isbn, download = self.articleData(
+                    item)
+                data = {
+                    "title": Utility.clean(title),
+                    "thumbnail_url": image,
+                    "author": Utility.clean(author),
+                    "publisher": Utility.clean(publisher),
+                    "date_published": datePublished,
+                    "number_of_page": nop,
+                    "isbn/asin": isbn,
+                    "description": Utility.clean(desc),
+                    "original_site": download
+                }
+        return data
 
-            items = soup.find_all('article', 'img_list')
-
-            [hrefLinks.append('http://www.e-booksdirectory.com/'+a['href'])
-             for item in items for a in item.find_all('a')]
-            num += 20
-
-        return hrefLinks
-
-
-class CrawlDetail:
-    def __init__(self, link):
-        self.__user_agent = {
-            'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'}
-
-        self.__link = link
-
-        self.__resp = requests.get(self.__link, headers=self.__user_agent)
-
-        self.__soup = BeautifulSoup(self.__resp.text, 'lxml')
-
-        self.__items = self.__soup.find_all('section', 'main_content')
-
-    def articles(self):
-        return [article for item in self.__items for article in item.find_all('article')]
-
-    def img(self):
-        article = self.articles()
-        return ''.join(['http://www.e-booksdirectory.com/'+img['src']
-                        for img in article[1].find_all('img')])
-
-    def title(self):
-        article = self.articles()
-        return ''.join([Utility.clean(strong.text) for strong in article[1].find_all(
-            'strong', itemprop='name')])
-
-    def author(self):
-        article = self.articles()
-        return ''.join([Utility.clean(span.text) for p in article[1].find_all('p') for span in p.find_all(
-            'span', itemprop='author')])
-
-    def publisher(self):
-        article = self.articles()
-        return ''.join([Utility.clean(span.text) for p in article[1].find_all('p') for span in p.find_all('span', itemprop='publisher')])
-
-    def datePublished(self):
-        article = self.articles()
-        return ''.join([span.text for span in article[1].find_all('span', itemprop='datePublished')])
-
-    def numPage(self):
-        article = self.articles()
-        np = [int(span.text) for p in article[1].find_all('p')
-              for span in p.find_all('span', itemprop='numberOfPages')]
-        return np[0] if len(np) == 1 and isinstance(np[0], int) else None
-
-    def isbn(self):
-        article = self.articles()
-
-        return ''.join([span.text for p in article[1].find_all('p') for span in p.find_all('span', itemprop='isbn')])
-
-    def desc(self):
-        article = self.articles()
-
-        return ''.join([Utility.clean(span.text) for p in article[1].find_all('p') for span in p.find_all('span', itemprop='description')])
-
-    def download_link(self):
-        article = self.articles()
-        url = ''.join([href['href'] for href in article[1].find_all(
-            'a') if href.text == 'Download link'])
-        return url
-
-
-class Save:
-    def __init__(self, urls):
-        self.urls = urls
-
-    def returnSuccess(self):
-
-        results = []
-        datas = {
-            'status': 200,
-            'data': results
-        }
-
-        for link in self.urls:
-            crawl = CrawlDetail(link)
-            data = {
-                'title': crawl.title(),
-                'thumbnail_url': crawl.img(),
-                'author': crawl.author(),
-                'publisher': crawl.publisher(),
-                'date_published': crawl.datePublished(),
-                'number_of_page': crawl.numPage(),
-                'isbn/asin': crawl.isbn(),
-                'description': crawl.desc(),
-                'original_site': crawl.download_link()
-            }
-            results.append(data)
-
-            fix_data, code = Utility.resp404(datas)
-            datas_dumps = dumps(fix_data, indent=4)
-
-        return datas_dumps, code
-
-
-class MatchingEBD:
-    def __init__(self, filter, category=None, nop=1):
-        self.filter = filter
-        self.category = category
-        self.nop = nop
-
-    def match(self):
+    def displayResult(self):
+        datas = []
         try:
-            match self.filter:
-                case 'categories':
-                    cat = Utility.cat.index(self.category)
-                    save = Save(Utility.links[cat])
-                    results, code = save.returnSuccess()
-                case 'new' | 'top' | 'popular':
-                    urls = GrabTheLink.takeNTP(int(self.nop), self.filter)
-                    save = Save(urls)
-                    results, code = save.returnSuccess()
+            match self.allcategories:
+                case True:
+                    item, resp = self.BSoup(self.link)
+                    data = {
+                        "status": resp.status_code,
+                        "data": datas
+                    }
+                    links, names, ids = self.allCategories(item)
+                    for link, name, id in zip(links, names, ids):
+                        datas.append(self.crawl(link=link, name=name, id=id))
+
+                    results = dumps(data, indent=4)
+
+                case False:
+                    item, resp = self.BSoup(self.link)
+
+                    if self.option == 'categories' or '':
+                        data = {
+                            "status": resp.status_code,
+                            "data": datas
+                        }
+                        for link in self.articleLinks(item):
+                            datas.append(self.crawl(link=link))
+
+                        results = dumps(data, indent=4)
+
+                    else:
+                        data = {
+                            "status": resp.status_code,
+                            "data": datas,
+                            "next_page": self.nextPage(item)
+                        }
+                        for link in self.NTPLinks(item):
+                            datas.append(self.crawl(link=link))
+
+                        results = dumps(data, indent=4)
 
             return Response(
                 response=results,
                 headers={"Content-Type": "application/json; charset=UTF-8"},
-                status=code
+                status=resp.status_code
             )
         except Exception as error:
             response = {
@@ -292,6 +194,6 @@ class MatchingEBD:
             }
             return Response(
                 response=dumps(response, indent=4),
-                headers={"Content-Type": "application/json;"},
+                headers={"Content-Type": "application/json; charset=UTF-8"},
                 status=500
             )

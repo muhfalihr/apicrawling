@@ -1,4 +1,4 @@
-from ebooksdirectory import Utility as UEBD, MatchingEBD
+from ebooksdirectory import Utility as UEBD, AllCategories
 from hathitrust import Utility as UHT, Select
 from freetechbooks import BrowseBooks, Utility as UFCB
 from pdfdrive import Search, Utility as UPD
@@ -20,7 +20,13 @@ ns3 = api.namespace(
 ns4 = api.namespace('pdfdrive', description='API Crawling web pdfdrive')
 ns5 = api.namespace('wikibooks', description='API Crawling web wikibooks')
 
+
 # EBOOKSDIRECTORY
+@ns1.route('/get-all-categories')
+class GetAllCatEBD(Resource):
+    def get(self):
+        EBD = AllCategories(allcategories=True)
+        return EBD.displayResult()
 
 
 @ns1.route('/get-books')
@@ -32,26 +38,22 @@ ns5 = api.namespace('wikibooks', description='API Crawling web wikibooks')
             "default": UEBD.filters[0]
         },
         "category": {
-            "description": "If filters is categories then you are required to select this. If it's not categories don't choose this",
-            "enum": [value for value in UEBD.cat]
+            "description": "id taken from get all categories"
         },
         "countpage": {
             "description": "How many pages will you take?",
-            "type": int
+            "type": int,
+            "default": 1
         }
     }
 )
 class GetValueEBD(Resource):
     def get(self):
-        try:
-            filters = request.args.get('filters')
-            category = request.args.get('category')
-            nop = request.args.get('countpage')
-            match = MatchingEBD(filters, category, nop)
-            return match.match()
-        except Exception as ex:
-            resp, code = UEBD.returnError(ex)
-            return Response(response=resp, status=code)
+        filters = request.args.get('filters')
+        category = request.args.get('category')
+        nop = request.args.get('countpage')
+        EBD = AllCategories(option=filters, id=category, countpage=nop)
+        return EBD.displayResult()
 
 
 # HATHITRUST
@@ -95,6 +97,7 @@ class GetValueHT(Resource):
         return match.displaysResults()
 
 
+# FREETECHBOOKS
 @ns3.route('/get-all-books')
 @ns3.doc(
     params={
@@ -282,6 +285,7 @@ class GetValueLic(Resource):
             return Response(response=resp, status=code)
 
 
+# PDFDRIVE
 @ns4.route('/get-books-by-search')
 @ns4.doc(
     params={
@@ -370,6 +374,7 @@ class GetCatSubcat(Resource):
         return SS.displayResult()
 
 
+# WIKIBOOKS
 @ns5.route('/get-all-departements')
 class GetAllDept(Resource):
     def get(self):
