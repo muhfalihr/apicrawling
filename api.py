@@ -1,11 +1,11 @@
 from ebooksdirectory import Utility as UEBD, AllCategories
 from hathitrust import Utility as UHT, Select
-from freetechbooks import BrowseBooks, Utility as UFCB
+from freetechbooks import BrowseBooks
 from pdfdrive import Search, Utility as UPD
-from wikibooks import TakeWB, Utility as UWB, download as Download
+from wikibooks import TakeWB, download as Download
 
 from flask_restx import Api, Resource
-from flask import Flask, Response, request
+from flask import Flask, request
 
 
 app = Flask(__name__)
@@ -110,24 +110,16 @@ class GetValueHT(Resource):
 )
 class GetValueFTB1(Resource):
     def get(self):
-        try:
-            page = request.args.get('page')
-            BB = BrowseBooks('all', page=page)
-            return BB.displayResult()
-        except Exception as ex:
-            resp, code = UFCB.returnError(ex)
-            return Response(response=resp, status=code)
+        page = request.args.get('page')
+        BB = BrowseBooks('all', page=page)
+        return BB.displayResult()
 
 
 @ns3.route('/get-all-subcategories')
 class GetAllSubCat(Resource):
     def get(self):
-        try:
-            BB = BrowseBooks('category')
-            return BB.displayResult()
-        except Exception as ex:
-            resp, code = UFCB.returnError(ex)
-            return Response(response=resp, status=code)
+        BB = BrowseBooks('category')
+        return BB.displayResult()
 
 
 @ns3.route('/get-all-subcategories-books')
@@ -146,14 +138,10 @@ class GetAllSubCat(Resource):
 )
 class GetValueSubCat(Resource):
     def get(self):
-        try:
-            subcat_id = request.args.get('id')
-            page = request.args.get('page')
-            BB = BrowseBooks(by='asc', page=page, id=subcat_id)
-            return BB.displayResult()
-        except Exception as ex:
-            resp, code = UFCB.returnError(ex)
-            return Response(response=resp, status=code)
+        subcat_id = request.args.get('id')
+        page = request.args.get('page')
+        BB = BrowseBooks(by='asc', page=page, id=subcat_id)
+        return BB.displayResult()
 
 
 @ns3.route('/get-all-authors')
@@ -168,13 +156,9 @@ class GetValueSubCat(Resource):
 )
 class GetAllAuthors(Resource):
     def get(self):
-        try:
-            page = request.args.get('page')
-            BB = BrowseBooks('author', page)
-            return BB.displayResult()
-        except Exception as ex:
-            resp, code = UFCB.returnError(ex)
-            return Response(response=resp, status=code)
+        page = request.args.get('page')
+        BB = BrowseBooks('author', page)
+        return BB.displayResult()
 
 
 @ns3.route('/get-all-authors-books')
@@ -188,13 +172,9 @@ class GetAllAuthors(Resource):
 )
 class GetValueAuthors(Resource):
     def get(self):
-        try:
-            subcat_id = request.args.get('id')
-            BB = BrowseBooks(id=subcat_id)
-            return BB.displayResult()
-        except Exception as ex:
-            resp, code = UFCB.returnError(ex)
-            return Response(response=resp, status=code)
+        subcat_id = request.args.get('id')
+        BB = BrowseBooks(id=subcat_id)
+        return BB.displayResult()
 
 
 @ns3.route('/get-all-publishers')
@@ -209,13 +189,9 @@ class GetValueAuthors(Resource):
 )
 class GetAllPubs(Resource):
     def get(self):
-        try:
-            page = request.args.get('page')
-            BB = BrowseBooks('publisher', page)
-            return BB.displayResult()
-        except Exception as ex:
-            resp, code = UFCB.returnError(ex)
-            return Response(response=resp, status=code)
+        page = request.args.get('page')
+        BB = BrowseBooks('publisher', page)
+        return BB.displayResult()
 
 
 @ns3.route('/get-all-publishers-books')
@@ -229,13 +205,9 @@ class GetAllPubs(Resource):
 )
 class GetValuePubs(Resource):
     def get(self):
-        try:
-            subcat_id = request.args.get('id')
-            BB = BrowseBooks(id=subcat_id)
-            return BB.displayResult()
-        except Exception as ex:
-            resp, code = UFCB.returnError(ex)
-            return Response(response=resp, status=code)
+        subcat_id = request.args.get('id')
+        BB = BrowseBooks(id=subcat_id)
+        return BB.displayResult()
 
 
 @ns3.route('/get-all-licenses')
@@ -250,13 +222,9 @@ class GetValuePubs(Resource):
 )
 class GetAllLic(Resource):
     def get(self):
-        try:
-            page = request.args.get('page')
-            BB = BrowseBooks('license', page)
-            return BB.displayResult()
-        except Exception as ex:
-            resp, code = UFCB.returnError(ex)
-            return Response(response=resp, status=code)
+        page = request.args.get('page')
+        BB = BrowseBooks('license', page)
+        return BB.displayResult()
 
 
 @ns3.route('/get-all-licenses-books')
@@ -275,14 +243,10 @@ class GetAllLic(Resource):
 )
 class GetValueLic(Resource):
     def get(self):
-        try:
-            subcat_id = request.args.get('id')
-            page = request.args.get('page')
-            BB = BrowseBooks(by='lic', page=page, id=subcat_id)
-            return BB.displayResult()
-        except Exception as ex:
-            resp, code = UFCB.returnError(ex)
-            return Response(response=resp, status=code)
+        subcat_id = request.args.get('id')
+        page = request.args.get('page')
+        BB = BrowseBooks(by='lic', page=page, id=subcat_id)
+        return BB.displayResult()
 
 
 # PDFDRIVE
