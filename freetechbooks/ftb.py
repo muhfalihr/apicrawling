@@ -240,7 +240,7 @@ class BrowseBooks:
                     for link in self.getLink():
                         datas.append(self.crawl(link=link))
 
-                    fix_data, code = Utility.resp400(data)
+                    fix_data, code = Utility.resp404(data)
                     results = dumps(fix_data, indent=4)
                 case 'topics':
                     data = {
@@ -251,7 +251,7 @@ class BrowseBooks:
                     for link in self.getLink():
                         datas.append(self.crawl(link=link))
 
-                    fix_data, code = Utility.resp400(data)
+                    fix_data, code = Utility.resp404(data)
                     results = dumps(fix_data, indent=4)
 
                 case 'categories':
@@ -263,7 +263,7 @@ class BrowseBooks:
                     for links, name, id in zip(subcat_links, subcat_name, subcat_id):
                         datas.append(self.crawl(links, name, id))
 
-                    fix_data, code = Utility.resp400(data)
+                    fix_data, code = Utility.resp404(data)
                     results = dumps(fix_data, indent=4)
 
                 case 'authors':
@@ -277,7 +277,7 @@ class BrowseBooks:
                         datas.append(self.crawl(
                             links, Utility.espFN(name), id))
 
-                    fix_data, code = Utility.resp400(data)
+                    fix_data, code = Utility.resp404(data)
                     results = dumps(fix_data, indent=4)
 
                 case 'publishers' | 'licenses':
@@ -290,7 +290,7 @@ class BrowseBooks:
                     for links, name, id in zip(pub_links, pub_name, pub_id):
                         datas.append(self.crawl(links, name, id))
 
-                    fix_data, code = Utility.resp400(data)
+                    fix_data, code = Utility.resp404(data)
                     results = dumps(fix_data, indent=4)
 
                 case _:

@@ -24,11 +24,11 @@ class Utility:
 
 
 class AllCategories:
-    def __init__(self, option=None, allcategories=False, id=None, countpage=1):
+    def __init__(self, option=None, allcategories=False, id=None, page=1):
         self.allcategories = allcategories
         self.option = option if option != 'top' else 'top20'
         self.id = id
-        self.countpage = int(countpage)
+        self.page = page
         self.headlink = 'http://www.e-booksdirectory.com/'
         self.headers = {
             'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'}
@@ -89,19 +89,19 @@ class AllCategories:
     def nextPage(self, item):
         for input in item[0].find_all('input', 'submit_button'):
             if input['value'] == 'Next':
-                return self.countpage + 1
+                return int(self.page) + 1
             elif input['value'] == 'Prev':
                 return ''
 
     def NTPLinks(self, item):
-        if self.countpage < 1:
+        if int(self.page) < 1:
             return ['']
-        elif self.countpage == 1:
+        elif int(self.page) == 1:
             links = self.articleLinks(item)
             return links
         else:
             num = 0
-            for i in range(self.countpage-1):
+            for i in range(int(self.page)-1):
                 data = {
                     "submit": "Next",
                     "startid": f"{0+num}"

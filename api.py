@@ -9,7 +9,8 @@ from flask import Flask, request
 
 
 app = Flask(__name__)
-api = Api(app, version='1.0', title='API Crawl', description='Masih Pemula')
+api = Api(app, version='1.0', title='API Crawl',
+          description='API Hasil Crawling Website')
 
 ns1 = api.namespace('ebooksdirectory',
                     description='API Crawling web e-booksdirectory')
@@ -25,6 +26,7 @@ ns5 = api.namespace('wikibooks', description='API Crawling web wikibooks')
 @ns1.route('/get-all-categories')
 class GetAllCatEBD(Resource):
     def get(self):
+        '''Mengembalikan All Categories'''
         EBD = AllCategories(allcategories=True)
         return EBD.displayResult()
 
@@ -40,19 +42,20 @@ class GetAllCatEBD(Resource):
         "category": {
             "description": "id taken from get all categories"
         },
-        "countpage": {
+        "page": {
             "description": "How many pages will you take?",
-            "type": int,
-            "default": 1
+            "type": int
         }
     }
 )
 class GetValueEBD(Resource):
+    @ns1.doc(description="NOTE:\nBila menggunakan filter categories maka untuk parameter countpage dikosongkan saja, dan untuk yang selain filter categories parameter category kosongkan saja")
     def get(self):
+        '''Mengembalikan books sesuai filter categories, new, top, dan popular'''
         filters = request.args.get('filters')
         category = request.args.get('category')
-        nop = request.args.get('countpage')
-        EBD = AllCategories(option=filters, id=category, countpage=nop)
+        page = request.args.get('page')
+        EBD = AllCategories(option=filters, id=category, page=page)
         return EBD.displayResult()
 
 
@@ -87,6 +90,7 @@ default = list(value)[0]
 )
 class GetValueHT(Resource):
     def get(self):
+        '''Melakukan Pencarian dari menentukan types, keyword, dll'''
         keyword = request.args.get('keyword')
         value = request.args.get('types')
         type = ''.join(
@@ -110,6 +114,7 @@ class GetValueHT(Resource):
 )
 class GetValueFTB1(Resource):
     def get(self):
+        '''Mengembalikan All Books berdasarkan page'''
         page = request.args.get('page')
         BB = BrowseBooks('all', page=page)
         return BB.displayResult()
@@ -118,6 +123,7 @@ class GetValueFTB1(Resource):
 @ns3.route('/get-all-subcategories')
 class GetAllSubCat(Resource):
     def get(self):
+        '''Mengembalikan All Categories'''
         BB = BrowseBooks('category')
         return BB.displayResult()
 
@@ -138,6 +144,7 @@ class GetAllSubCat(Resource):
 )
 class GetValueSubCat(Resource):
     def get(self):
+        '''Mengembalikan All Books sesuai id category'''
         subcat_id = request.args.get('id')
         page = request.args.get('page')
         BB = BrowseBooks(by='asc', page=page, id=subcat_id)
@@ -156,6 +163,7 @@ class GetValueSubCat(Resource):
 )
 class GetAllAuthors(Resource):
     def get(self):
+        '''Mengembalikan All Authors'''
         page = request.args.get('page')
         BB = BrowseBooks('author', page)
         return BB.displayResult()
@@ -165,13 +173,14 @@ class GetAllAuthors(Resource):
 @ns3.doc(
     params={
         "id": {
-            "description": "id is the id of all-sub-categories",
+            "description": "id is the id of all-authors",
             "required": True
         }
     }
 )
 class GetValueAuthors(Resource):
     def get(self):
+        '''Mengembalikan All Books sesuai id authors'''
         subcat_id = request.args.get('id')
         BB = BrowseBooks(id=subcat_id)
         return BB.displayResult()
@@ -189,6 +198,7 @@ class GetValueAuthors(Resource):
 )
 class GetAllPubs(Resource):
     def get(self):
+        '''Mengembalikan All Publishers'''
         page = request.args.get('page')
         BB = BrowseBooks('publisher', page)
         return BB.displayResult()
@@ -198,13 +208,14 @@ class GetAllPubs(Resource):
 @ns3.doc(
     params={
         "id": {
-            "description": "id is the id of all-sub-categories",
+            "description": "id is the id of all-publishers",
             "required": True
         }
     }
 )
 class GetValuePubs(Resource):
     def get(self):
+        '''Mengembalikan All Books sesuai id Publisher'''
         subcat_id = request.args.get('id')
         BB = BrowseBooks(id=subcat_id)
         return BB.displayResult()
@@ -222,6 +233,7 @@ class GetValuePubs(Resource):
 )
 class GetAllLic(Resource):
     def get(self):
+        '''Mengembalikan All Licenses'''
         page = request.args.get('page')
         BB = BrowseBooks('license', page)
         return BB.displayResult()
@@ -231,7 +243,7 @@ class GetAllLic(Resource):
 @ns3.doc(
     params={
         "id": {
-            "description": "id is the id of all-sub-categories",
+            "description": "id is the id of all-licenses",
             "required": True
         },
         'page': {
@@ -243,6 +255,7 @@ class GetAllLic(Resource):
 )
 class GetValueLic(Resource):
     def get(self):
+        '''Mengembalikan All Books sesuai id license'''
         subcat_id = request.args.get('id')
         page = request.args.get('page')
         BB = BrowseBooks(by='lic', page=page, id=subcat_id)
@@ -281,6 +294,7 @@ class GetValueLic(Resource):
 )
 class GetValuePD(Resource):
     def get(self):
+        '''Mengembalikan All Books by search'''
         keyword = request.args.get('keyword')
         pc = request.args.get('pagecount')
         pagecount = ''.join(
@@ -296,21 +310,24 @@ class GetValuePD(Resource):
 @ns4.route('/get-all-categories')
 class GetAllCat(Resource):
     def get(self):
+        '''Mengembalikan All Categories'''
         SS = Search(categories_list=True)
         return SS.displayResult()
 
 
 @ns4.route('/get-subcategories-by-id')
 @ns4.doc(
+    description='NOTE:\nTidak semua categori memiliki sub categori. Jadi, jika return status nya adalah 400/404 berarti categori tersebut tidak memiliki sub categori.',
     params={
         "categoryid": {
-            "description": "ID taken from get all categories\nNOTE: \nnot all ids from get all categories have sub categories so if the categories do not have sub categories then the result code 400 is returned",
+            "description": "ID taken from get all categories",
             "required": True
         }
     }
 )
 class GetAllSubCat(Resource):
     def get(self):
+        '''Mengembalikan Sub Categories by id category'''
         category = request.args.get('categoryid')
         SS = Search(category=category, categories_list=True, subcat=True)
         return SS.displayResult()
@@ -332,6 +349,7 @@ class GetAllSubCat(Resource):
 )
 class GetCatSubcat(Resource):
     def get(self):
+        '''Mengembalikan All Books by id category atau id subcategory'''
         catsubcatid = request.args.get('cat_subcat_id')
         page = request.args.get('page')
         SS = Search(category=catsubcatid, page=page)
@@ -342,11 +360,12 @@ class GetCatSubcat(Resource):
 @ns5.route('/get-all-departements')
 class GetAllDept(Resource):
     def get(self):
+        '''Mengembalikan All Departement'''
         TWB = TakeWB(listDepartement=True)
         return TWB.displayResult()
 
 
-@ns5.route('/get-all-featured-books-by-departements')
+@ns5.route('/get-all-featured-books-by-departement')
 @ns5.doc(
     params={
         "departement": {
@@ -357,6 +376,7 @@ class GetAllDept(Resource):
 )
 class GetAllFB(Resource):
     def get(self):
+        '''Mengembalikan All Featured Books by departement'''
         departement = request.args.get('departement')
         TWB = TakeWB(departement=departement)
         return TWB.displayResult()
@@ -373,6 +393,7 @@ class GetAllFB(Resource):
 )
 class GetFB(Resource):
     def get(self):
+        '''Mengembalikan isi dari featured book'''
         departement = request.args.get('departement')
         TWB = TakeWB(id=departement)
         return TWB.displayResult()
@@ -399,6 +420,7 @@ class GetFB(Resource):
 )
 class GetBooksSearch(Resource):
     def get(self):
+        '''Mengembalikan All Books by search'''
         keyword = request.args.get('keyword')
         page = request.args.get('page')
         pagesize = request.args.get('pagesize')
@@ -410,13 +432,14 @@ class GetBooksSearch(Resource):
 @ns5.doc(
     params={
         "title": {
-            "description": "taken from the result ids of all endpoints",
+            "description": "from id title",
             "required": True
         }
     }
 )
 class DownloadPDF(Resource):
     def get(self):
+        '''Unduh PDF by id title'''
         title = request.args.get('title')
         download = Download(title)
         return download.req()
