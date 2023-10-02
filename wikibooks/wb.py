@@ -13,9 +13,6 @@ class Utility:
         '''Mengganti string uniq dengan dengan string sesuai format ascii, serta menghilangkan "\n" serta mengganati kutip dua menjadi kutip satu. Serta menghilangkan karakter tidak penting diakhir kalimat atau kata'''
         cleaned = re.sub(r'\n+', '\n', text)
         cleaned_text = re.sub(r'\s+', ' ', cleaned)
-        # normalized = unicodedata.normalize('NFKD', cleaned_text)
-        # ascii_text = normalized.encode('ascii', 'ignore').decode('ascii')
-        # replace_text = ascii_text.replace('\"', "'").replace('\r\n', ' - ')
         return cleaned_text.strip().rstrip(":,./;'\=-")
 
     def unique(inList):
@@ -105,25 +102,18 @@ class TakeWB:
                  for teks in fbtitles]
         return fblinks, fbtitles, fbids
 
-    def book(self, item):
-        title = [loads(p.text)['query']['pages'][0]['title']
-                 for p in item.find_all('p', class_=False)]
-        content = [loads(p.text)['query']['pages'][0]['revisions'][0]['slots']
-                   ['main']['content'] for p in item.find_all('p', class_=False)]
-        return ''.join(title), ''.join(content)
+    def book(self):
+        value = self.resp.content.decode('utf-8')
+        return loads(value)['query']['pages']
 
-    def crawl(self, link=None, title=None, id=None, content=None, filesize=None, countword=None):
+    def crawl(self, link=None, title=None, id=None, filesize=None, countword=None):
         if self.id == None:
             data = {
                 "link": link,
                 "title": title,
                 "id": id
             }
-        elif self.id != None:
-            data = {
-                "title": title,
-                "content": content
-            }
+
         elif self.keyword != None:
             data = {
                 "link": link,
@@ -159,11 +149,10 @@ class TakeWB:
                 for link, title, id in zip(links, titles, ids):
                     datas.append(self.crawl(link, title, id))
             elif self.id != None:
-                item = self.BSoup()
-                title, content = self.book(item)
+                content = self.book()
                 data = {
                     "status": status_code,
-                    "data": self.crawl(title=title, content=content)
+                    "data": content
                 }
             elif self.keyword != None:
                 item = self.BSoup('div', 'vector-body')
